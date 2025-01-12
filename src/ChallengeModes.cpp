@@ -10,6 +10,24 @@ ChallengeModes* ChallengeModes::instance()
     return &instance;
 }
 
+void ChallengeModes::_LocalizeItem(Player const* forPlayer, std::string& itemName, uint32 entry)
+{
+    // Get the locale index for the player's session
+    uint32 loc = forPlayer->GetSession()->GetSessionDbLocaleIndex();
+    std::wstring wnamepart;// Convert the item name to a wstring
+    // Get the localized name of the item
+    ItemLocale const* itemInfo = sObjectMgr->GetItemLocale(entry);
+    if (!itemInfo)
+        return;
+    // Check if the localized name is available for the player's locale
+    if (itemInfo->Name.size() > loc && !itemInfo->Name[loc].empty())
+    {
+        const std::string name = itemInfo->Name[loc];// Get the localized name
+        if (Utf8FitTo(name, wnamepart))// Convert the localized name to a wstring
+            itemName = name;
+    }
+}
+
 bool ChallengeModes::challengeEnabledForPlayer(ChallengeModeSettings setting, Player* player) const
 {
     if (!enabled() || !challengeEnabled(setting))
@@ -486,7 +504,28 @@ public:
                 if (pItem->GetTemplate() && !pItem->IsEquipped())
                     continue;
                 uint8 slot = pItem->GetSlot();
-                ChatHandler(player->GetSession()).PSendSysMessage("|cffDA70D6You have lost your |cffffffff|Hitem:%d:0:0:0:0:0:0:0:0|h[%s]|h|r", pItem->GetEntry(), pItem->GetTemplate()->Name1.c_str());
+                std::string itemName = pItem->GetTemplate()->Name1;// Get item name
+                uint32 entry = pItem->GetEntry();// Get item entry
+                ChallengeModes::_LocalizeItem(player,itemName,entry);// Localize item name汉化半硬核模式下失去物品提示不再是英文
+                switch (player->GetSession()->GetSessionDbLocaleIndex())// Get player's locale
+                {
+                case LOCALE_enUS:// English
+                {
+                    ChatHandler(player->GetSession()).PSendSysMessage("|cffDA70D6You have lost your |cffffffff|Hitem:%d:0:0:0:0:0:0:0:0|h[%s]|h|r", pItem->GetEntry(), itemName.c_str());
+                    break;
+                }
+                case LOCALE_koKR:
+                case LOCALE_frFR:
+                case LOCALE_deDE:
+                case LOCALE_zhCN:// Chinese
+                {
+                    ChatHandler(player->GetSession()).PSendSysMessage("|cffDA70D6你失去了 |cffffffff|Hitem:%d:0:0:0:0:0:0:0:0|h[%s]|h|r", pItem->GetEntry(), itemName.c_str());
+                    break;
+                }
+                default:
+                    ChatHandler(player->GetSession()).PSendSysMessage("|cffDA70D6你失去了 |cffffffff|Hitem:%d:0:0:0:0:0:0:0:0|h[%s]|h|r", pItem->GetEntry(), itemName.c_str());
+                    break;
+                }
                 player->DestroyItem(INVENTORY_SLOT_BAG_0, slot, true);
             }
         }
@@ -797,35 +836,35 @@ public:
     {
         if (sChallengeModes->challengeEnabled(SETTING_HARDCORE) && !playerSettingEnabled(player, SETTING_HARDCORE) && !playerSettingEnabled(player, SETTING_SEMI_HARDCORE))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Hardcore Mode", 0, SETTING_HARDCORE);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "开启一命模式，死亡无法复活", 0, SETTING_HARDCORE);
         }
         if (sChallengeModes->challengeEnabled(SETTING_SEMI_HARDCORE) && !playerSettingEnabled(player, SETTING_HARDCORE) && !playerSettingEnabled(player, SETTING_SEMI_HARDCORE))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Semi-Hardcore Mode", 0, SETTING_SEMI_HARDCORE);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "开启半硬核模式，死亡损失装备和金币", 0, SETTING_SEMI_HARDCORE);
         }
         if (sChallengeModes->challengeEnabled(SETTING_SELF_CRAFTED) && !playerSettingEnabled(player, SETTING_SELF_CRAFTED) && !playerSettingEnabled(player, SETTING_IRON_MAN))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Self-Crafted Mode", 0, SETTING_SELF_CRAFTED);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "开启自给模式，只能穿自制装备", 0, SETTING_SELF_CRAFTED);
         }
         if (sChallengeModes->challengeEnabled(SETTING_ITEM_QUALITY_LEVEL) && !playerSettingEnabled(player, SETTING_ITEM_QUALITY_LEVEL))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Low Quality Item Mode", 0, SETTING_ITEM_QUALITY_LEVEL);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "开启平民模式，只能穿普通或低质量的装备", 0, SETTING_ITEM_QUALITY_LEVEL);
         }
         if (sChallengeModes->challengeEnabled(SETTING_SLOW_XP_GAIN) && !playerSettingEnabled(player, SETTING_SLOW_XP_GAIN) && !playerSettingEnabled(player, SETTING_VERY_SLOW_XP_GAIN))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Slow XP Mode", 0, SETTING_SLOW_XP_GAIN);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "开启乌龟模式，经验减半", 0, SETTING_SLOW_XP_GAIN);
         }
         if (sChallengeModes->challengeEnabled(SETTING_VERY_SLOW_XP_GAIN) && !playerSettingEnabled(player, SETTING_SLOW_XP_GAIN) && !playerSettingEnabled(player, SETTING_VERY_SLOW_XP_GAIN))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Very Slow XP Mode", 0, SETTING_VERY_SLOW_XP_GAIN);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "开启蜗牛模式，四分之一经验", 0, SETTING_VERY_SLOW_XP_GAIN);
         }
         if (sChallengeModes->challengeEnabled(SETTING_QUEST_XP_ONLY) && !playerSettingEnabled(player, SETTING_QUEST_XP_ONLY))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Quest XP Only Mode", 0, SETTING_QUEST_XP_ONLY);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "开启任务模式，只能从任务获取经验", 0, SETTING_QUEST_XP_ONLY);
         }
         if (sChallengeModes->challengeEnabled(SETTING_IRON_MAN) && !playerSettingEnabled(player, SETTING_IRON_MAN) && !playerSettingEnabled(player, SETTING_SELF_CRAFTED))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Iron Man Mode", 0, SETTING_IRON_MAN);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "开启钢铁侠模式", 0, SETTING_IRON_MAN);
         }
         SendGossipMenuFor(player, 12669, go->GetGUID());
         return true;
@@ -834,7 +873,7 @@ public:
     bool OnGossipSelect(Player* player, GameObject* /*go*/, uint32 /*sender*/, uint32 action) override
     {
         player->UpdatePlayerSetting("mod-challenge-modes", action, 1);
-        ChatHandler(player->GetSession()).PSendSysMessage("Challenge enabled.");
+        ChatHandler(player->GetSession()).PSendSysMessage("全新挑战模式已启用，请注意自身安全！");
         CloseGossipMenuFor(player);
         return true;
     }
